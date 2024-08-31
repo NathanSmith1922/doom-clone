@@ -17,12 +17,12 @@ void unpack_color(const uint32_t& color, uint8_t& r, uint8_t& g, uint8_t& b, uin
 
 void drop_ppm_image(const std::string filename, const std::vector<uint32_t>& image, const size_t w, const size_t h) {
     assert(image.size() == w * h);
-    std::ofstream ofs(filename, std::ios::binary);
-    ofs << "P6\n" << w << " " << h << "\n255\n";
-    for (size_t i = 0; i < h * w; ++i) {
+    std::ofstream ofs(filename, std::ios::binary); //create new file for writing
+    ofs << "P6\n" << w << " " << h << "\n255\n"; // setup that file for rgb values in width and height dimensions
+    for (size_t i = 0; i < h * w; ++i) { // fill that file with colours
         uint8_t r, g, b, a;
         unpack_color(image[i], r, g, b, a);
-        ofs << static_cast<char>(r) << static_cast<char>(g) << static_cast<char>(b);
+        ofs << static_cast<char>(r) << static_cast<char>(g) << static_cast<char>(b); // actually write to the file
     }
     ofs.close();
 }
