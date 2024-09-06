@@ -1,4 +1,7 @@
+#define _USE_MATH_DEFINES
+
 #include <iostream>
+#include <cmath>
 #include <fstream>
 #include <vector>
 #include <cstdint>
@@ -33,16 +36,16 @@ void draw_rectangle(std::vector<uint32_t>& img, const size_t img_w, const size_t
         for (size_t j = 0; j < h; j++) {
             size_t cx = x + i;
             size_t cy = y + j;
-            assert(cx < img_w && cy < img_h);
+            if (cx >= img_w || cy >= img_h) continue; // negative values don't need to be checked for
             img[cx + cy * img_w] = color;
         }
     }
 }
 
 int main() {
-    const size_t win_w = 512; // image width
+    const size_t win_w = 1024; // image width
     const size_t win_h = 512; // image height
-    std::vector<uint32_t> framebuffer(win_w * win_h, 255); // the image itself, initialized to red
+    std::vector<uint32_t> framebuffer(win_w * win_h, pack_color(255, 255, 255)); // the image itself, initialized to red
 
     const size_t map_w = 16; // map width
     const size_t map_h = 16; // map height
@@ -64,16 +67,12 @@ int main() {
         "0002222222200000"; // our game map
     assert(sizeof(map) == map_w * map_h + 1); // +1 for the null terminated string
 
-    for (size_t j = 0; j < win_h; j++) { // fill the screen with color gradients
-        for (size_t i = 0; i < win_w; i++) {
-            uint8_t r = 255 * j / float(win_h); // varies between 0 and 255 as j sweeps the vertical
-            uint8_t g = 255 * i / float(win_w); // varies between 0 and 255 as i sweeps the horizontal
-            uint8_t b = 0;
-            framebuffer[i + j * win_w] = pack_color(r, g, b);
-        }
-    }
+    float player_x = 3.456; // player x position
+    float player_y = 2.345; // player y position
+    float player_a = 1.523; // player view direction
+    const float fov = M_PI / 3.; // field of view
 
-    const size_t rect_w = win_w / map_w;
+    const size_t rect_w = win_w / (map_w * 2);
     const size_t rect_h = win_h / map_h;
     for (size_t j = 0; j < map_h; j++) { // draw the map
         for (size_t i = 0; i < map_w; i++) {
@@ -81,6 +80,29 @@ int main() {
             size_t rect_x = i * rect_w;
             size_t rect_y = j * rect_h;
             draw_rectangle(framebuffer, win_w, win_h, rect_x, rect_y, rect_w, rect_h, pack_color(0, 255, 255));
+        }
+    }
+
+    //draw_rectangle(framebuffer, win_w, win_h, player_x * rect_w, player_y * rect_h, 5, 5, pack_color(255, 255, 255));
+
+    // Basic raycast in the direction of the player
+    for (size_t i = 0; i < win_w / 2; i++) { // draw the visibility cone
+        float angle = player_a - fov / 2 + fov * i / float(win_w / 2);
+
+        for (float t = 0; t < 20; t += .05) {
+            float cx = player_x + t * cos(angle);
+            float cy = player_y + t * sin(angle);
+
+            size_t pix_x = cx * rect_w;
+            size_t pix_y = cy * rect_h;
+
+            framebuffer[pix_x + pix_y * win_w] = pack_color(160, 160, 160); // draw the cast
+
+            if (map[int (cx) + int (cy) * map_w] != ' ') { // our ray touches a wall, so draw the vertical column to create an illusion of 3D
+                size_t column_height = win_h / t;
+                draw_rectangle(framebuffer, win_w, win_h, win_w / 2 + i, win_h / 2 - column_height / 2, 1, column_height, pack_color(0, 255, 255));
+                break;
+            }
         }
     }
 
